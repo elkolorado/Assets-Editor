@@ -24,7 +24,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Stretch" HorizontalAlignment="Left" Margin="10,5,0,10" Width="240">
+            <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Stretch" HorizontalAlignment="Left" Margin="10,5,0,10" Width="340">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="45"/>
@@ -32,7 +32,7 @@
                         <RowDefinition Height="40"/>
                         <RowDefinition Height="75"/>
                     </Grid.RowDefinitions>
-                    <ComboBox Grid.Row="0" x:Name="ObjectMenu" Style="{StaticResource MaterialDesignFilledComboBox}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" SelectionChanged="ObjectMenuChanged" SelectedIndex="0" Width="240" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Padding="0,-15,0,0" Focusable="False" SnapsToDevicePixels="True" FlowDirection="LeftToRight" Height="50" Background="{DynamicResource PrimaryHueMidBrush}" BorderThickness="0,0,0,0" >
+                    <ComboBox Grid.Row="0" x:Name="ObjectMenu" Style="{StaticResource MaterialDesignFilledComboBox}" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold" SelectionChanged="ObjectMenuChanged" SelectedIndex="0" Width="340" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Padding="0,-15,0,0" Focusable="False" SnapsToDevicePixels="True" FlowDirection="LeftToRight" Height="50" Background="{DynamicResource PrimaryHueMidBrush}" BorderThickness="0,0,0,0" >
                         <ComboBoxItem Content="Outfits"/>
                         <ComboBoxItem Content="Items"/>
                         <ComboBoxItem Content="Effects"/>
@@ -55,10 +55,22 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
+                                <GridViewColumn Header="Name" Width="150">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
                     <xctk:IntegerUpDown Grid.Row="2" x:Name="ObjListViewSelectedIndex" ParsingNumberStyle="Integer" ValueChanged="ObjListViewSelectedIndex_ValueChanged" Minimum="0" Focusable="False" Margin="0,5,0,0" Background="{DynamicResource MaterialDesignLightSeparatorBackground}"/>
+
+                    <TextBox KeyDown="ObjListViewSearchTextBox_KeyDown" Grid.Row="2" Width="150" Margin="0,0,0,0" x:Name="ObjListViewSearchTextBox" TextChanged="ObjListViewSearchTextBox_TextChanged" VerticalAlignment="Center"/>
+                    
+
+                    
                     <Border Grid.Row="3" BorderThickness="1" BorderBrush="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="-1,5,-1,-1">
                         <Grid>
                             <Grid.ColumnDefinitions>

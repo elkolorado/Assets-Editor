@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -83,24 +84,47 @@ namespace Assets_Editor
             }
             palette.SetTheme(theme);
         }
+
+
         public DatEditor(Appearances appearances)
-            :this()
+            : this()
         {
+            string fileName = "tibia_13_21_13810_asset_names.json";
+            String strAppPath = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+            String strFilePath = Path.Combine(strAppPath, "Resources");
+            String strFullFilename = Path.Combine(strFilePath, fileName);
+            string jsonContent = File.ReadAllText(strFullFilename);
+            var keyValuePairs = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(jsonContent);
+
             foreach (var outfit in appearances.Outfit)
             {
-                ThingsOutfit.Add(new ShowList() { Id = outfit.Id});
+                ThingsOutfit.Add(new ShowList() { Id = outfit.Id });
             }
             foreach (var item in appearances.Object)
             {
-                ThingsItem.Add(new ShowList() { Id = item.Id});
+                // Create a new ShowList item and add it to ThingsItem
+                ShowList newItem = new ShowList() { Id = item.Id, Name = item.Name };
+                ThingsItem.Add(newItem);
+
+                // Convert the int key to a string
+                string key = newItem.Id.ToString();
+
+                // Find the dictionary entry with a matching key
+                var matchingPair = keyValuePairs.FirstOrDefault(pair => pair.ContainsKey(key));
+
+                if (matchingPair != null)
+                {
+                    // Access the value using the key and update the Name property
+                    newItem.Name = matchingPair[key];
+                }
             }
             foreach (var effect in appearances.Effect)
             {
-                ThingsEffect.Add(new ShowList() { Id = effect.Id});
+                ThingsEffect.Add(new ShowList() { Id = effect.Id });
             }
             foreach (var missile in appearances.Missile)
             {
-                ThingsMissile.Add(new ShowList() { Id = missile.Id});
+                ThingsMissile.Add(new ShowList() { Id = missile.Id });
             }
             SprListView.ItemsSource = MainWindow.AllSprList;
             UpdateShowList(ObjectMenu.SelectedIndex);
@@ -163,9 +187,9 @@ namespace Assets_Editor
                 VirtualizingStackPanel panel = Utils.FindVisualChild<VirtualizingStackPanel>(SprListView);
                 int offset = (int)panel.VerticalOffset;
                 int maxOffset = (int)panel.ViewportHeight;
-                if(nIndex - maxOffset == offset)
-                    scrollViewer.ScrollToVerticalOffset(offset+1);
-                else if(nIndex + 1 == offset)
+                if (nIndex - maxOffset == offset)
+                    scrollViewer.ScrollToVerticalOffset(offset + 1);
+                else if (nIndex + 1 == offset)
                     scrollViewer.ScrollToVerticalOffset(offset - 1);
                 else if (nIndex >= offset + maxOffset || nIndex < offset)
                     scrollViewer.ScrollToVerticalOffset(SprListView.SelectedIndex);
@@ -191,7 +215,12 @@ namespace Assets_Editor
                         if (ObjectMenu.SelectedIndex == 0)
                             ThingsOutfit[i].Image = Utils.BitmapToBitmapImage(MainWindow.getSpriteStream((int)MainWindow.appearances.Outfit[i].FrameGroup[0].SpriteInfo.SpriteId[0]));
                         else if (ObjectMenu.SelectedIndex == 1)
+                        {
                             ThingsItem[i].Image = Utils.BitmapToBitmapImage(MainWindow.getSpriteStream((int)MainWindow.appearances.Object[i].FrameGroup[0].SpriteInfo.SpriteId[0]));
+
+                        }
+
+
                         else if (ObjectMenu.SelectedIndex == 2)
                             ThingsEffect[i].Image = Utils.BitmapToBitmapImage(MainWindow.getSpriteStream((int)MainWindow.appearances.Effect[i].FrameGroup[0].SpriteInfo.SpriteId[0]));
                         else if (ObjectMenu.SelectedIndex == 3)
@@ -219,6 +248,66 @@ namespace Assets_Editor
                 }
             }
         }
+
+        private void ObjListViewSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (ObjListView.IsLoaded)
+            {
+                string searchText = ObjListViewSearchTextBox.Text.ToLower();
+                if (string.IsNullOrWhiteSpace(searchText)) return;
+                // Find the first item containing the entered text
+                ShowList firstMatchingItem = ThingsItem.FirstOrDefault(item => item.Name.ToLower().Contains(searchText));
+
+                if (firstMatchingItem != null)
+                {
+                    ObjListView.SelectedItem = firstMatchingItem;
+                    ScrollToSelectedItem();
+                }
+            }
+        }
+
+        private void ScrollToSelectedItem()
+        {
+            ScrollViewer scrollViewer = Utils.FindVisualChild<ScrollViewer>(ObjListView);
+            VirtualizingStackPanel panel = Utils.FindVisualChild<VirtualizingStackPanel>(ObjListView);
+            int offset = (int)panel.VerticalOffset;
+            int maxOffset = (int)panel.ViewportHeight;
+
+            if (ObjListView.SelectedIndex > offset + maxOffset || ObjListView.SelectedIndex < offset)
+            {
+                scrollViewer.ScrollToVerticalOffset(ObjListView.SelectedIndex);
+            }
+        }
+
+        private void ObjListViewSearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                MoveToNextMatchingItem();
+                e.Handled = true;
+            }
+        }
+
+        private void MoveToNextMatchingItem()
+        {
+            if (ObjListView.IsLoaded)
+            {
+                string searchText = ObjListViewSearchTextBox.Text.ToLower();
+
+                // Find the next item containing the entered text after the current selection
+                ShowList nextMatchingItem = ThingsItem
+                    .SkipWhile(item => item != ObjListView.SelectedItem)
+                    .Skip(1)
+                    .FirstOrDefault(item => item.Name.ToLower().Contains(searchText));
+
+                if (nextMatchingItem != null)
+                {
+                    ObjListView.SelectedItem = nextMatchingItem;
+                    ScrollToSelectedItem();
+                }
+            }
+        }
+
 
         private void ObjListViewSelectedIndex_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
@@ -249,6 +338,7 @@ namespace Assets_Editor
             if (showList != null)
             {
                 ObjListViewSelectedIndex.Value = (int)showList.Id;
+
                 if (ObjectMenu.SelectedIndex == 0)
                     LoadSelectedObjectAppearances(MainWindow.appearances.Outfit[ObjListView.SelectedIndex]);
                 else if (ObjectMenu.SelectedIndex == 1)
@@ -618,7 +708,7 @@ namespace Assets_Editor
             CurrentObjectAppearance.FrameGroup[(int)SprGroupSlider.Value].SpriteInfo.SpriteId[(int)img.Tag] = uint.Parse((string)img.ToolTip);
         }
 
-        public  int GetSpriteIndex(FrameGroup frameGroup, int layers, int patternX, int patternY, int patternZ, int frames)
+        public int GetSpriteIndex(FrameGroup frameGroup, int layers, int patternX, int patternY, int patternZ, int frames)
         {
             var spriteInfo = frameGroup.SpriteInfo;
             int index = 0;
@@ -782,7 +872,8 @@ namespace Assets_Editor
             if (!string.IsNullOrWhiteSpace(A_FlagDescription.Text))
                 CurrentObjectAppearance.Description = A_FlagDescription.Text;
 
-            if ((bool)A_FlagGround.IsChecked) {
+            if ((bool)A_FlagGround.IsChecked)
+            {
                 CurrentObjectAppearance.Flags.Bank = new AppearanceFlagBank
                 {
                     Waypoints = (uint)A_FlagGroundSpeed.Value
@@ -793,22 +884,22 @@ namespace Assets_Editor
 
             if ((bool)A_FlagClip.IsChecked)
                 CurrentObjectAppearance.Flags.Clip = true;
-            else if(CurrentObjectAppearance.Flags.HasClip)
+            else if (CurrentObjectAppearance.Flags.HasClip)
                 CurrentObjectAppearance.Flags.ClearClip();
 
             if ((bool)A_FlagBottom.IsChecked)
                 CurrentObjectAppearance.Flags.Bottom = true;
-            else if(CurrentObjectAppearance.Flags.HasBottom)
+            else if (CurrentObjectAppearance.Flags.HasBottom)
                 CurrentObjectAppearance.Flags.ClearBottom();
 
             if ((bool)A_FlagTop.IsChecked)
                 CurrentObjectAppearance.Flags.Top = true;
-            else if(CurrentObjectAppearance.Flags.HasTop)
+            else if (CurrentObjectAppearance.Flags.HasTop)
                 CurrentObjectAppearance.Flags.ClearTop();
 
             if ((bool)A_FlagContainer.IsChecked)
                 CurrentObjectAppearance.Flags.Container = true;
-            else if(CurrentObjectAppearance.Flags.HasContainer)
+            else if (CurrentObjectAppearance.Flags.HasContainer)
                 CurrentObjectAppearance.Flags.ClearContainer();
 
             if ((bool)A_FlagCumulative.IsChecked)
@@ -978,7 +1069,7 @@ namespace Assets_Editor
                     Color = (uint)A_FlagLightColor.Value
                 };
             }
-            else 
+            else
                 CurrentObjectAppearance.Flags.Light = null;
 
 
@@ -1000,7 +1091,7 @@ namespace Assets_Editor
                     Y = (uint)A_FlagShiftY.Value
                 };
             }
-            else 
+            else
                 CurrentObjectAppearance.Flags.Shift = null;
 
             if ((bool)A_FlagHeight.IsChecked)
@@ -1207,7 +1298,7 @@ namespace Assets_Editor
                     ThingsMissile = new ObservableCollection<ShowList>(ThingsMissile.OrderBy(item => item.Id));
                 }
             }
-            
+
 
             StatusBar.MessageQueue.Enqueue($"Saved Current Object.", null, null, null, false, true, TimeSpan.FromSeconds(2));
         }
@@ -1263,7 +1354,7 @@ namespace Assets_Editor
 
         private void Compile_Click(object sender, RoutedEventArgs e)
         {
-            File.Copy(System.IO.Path.Combine(MainWindow._assetsPath , "catalog-content.json"), System.IO.Path.Combine(MainWindow._assetsPath, "catalog-content.json-bak"), true);
+            File.Copy(System.IO.Path.Combine(MainWindow._assetsPath, "catalog-content.json"), System.IO.Path.Combine(MainWindow._assetsPath, "catalog-content.json-bak"), true);
             File.Copy(MainWindow._datPath, MainWindow._datPath + "-bak", true);
 
             using (StreamWriter file = File.CreateText(MainWindow._assetsPath + "\\catalog-content.json"))
@@ -1645,7 +1736,7 @@ namespace Assets_Editor
 
                 int x = (currentSpriteIndex % spritesPerRow) * spriteSize.Width;
                 int y = (currentSpriteIndex / spritesPerRow) * spriteSize.Height;
-                
+
                 graphics.DrawImage(System.Drawing.Image.FromStream(spriteInfo.Stream), x, y, spriteSize.Width, spriteSize.Height);
                 MainWindow.SprLists[importSprCounter] = spriteInfo.Stream;
                 MainWindow.AllSprList.Add(new ShowList() { Id = (uint)importSprCounter });
@@ -1728,7 +1819,7 @@ namespace Assets_Editor
                             }
                         }
                     }
-                    
+
                     foreach (Appearance appearance in appearances.Object)
                     {
                         for (int i = 0; i < appearance.FrameGroup.Count; i++)
@@ -1740,7 +1831,7 @@ namespace Assets_Editor
                             }
                         }
                     }
-                    
+
                     foreach (Appearance appearance in appearances.Effect)
                     {
                         for (int i = 0; i < appearance.FrameGroup.Count; i++)
@@ -1752,7 +1843,7 @@ namespace Assets_Editor
                             }
                         }
                     }
-                    
+
                     foreach (Appearance appearance in appearances.Missile)
                     {
                         for (int i = 0; i < appearance.FrameGroup.Count; i++)
@@ -1785,7 +1876,7 @@ namespace Assets_Editor
                         MainWindow.appearances.Object.Add(appearance.Clone());
                         ThingsItem.Add(new ShowList() { Id = appearance.Id });
                     }
-                    
+
                     foreach (Appearance appearance in appearances.Effect)
                     {
                         appearance.SpriteData.Clear();
@@ -1793,7 +1884,7 @@ namespace Assets_Editor
                         MainWindow.appearances.Effect.Add(appearance.Clone());
                         ThingsEffect.Add(new ShowList() { Id = appearance.Id });
                     }
-                    
+
                     foreach (Appearance appearance in appearances.Missile)
                     {
                         appearance.SpriteData.Clear();
@@ -1842,7 +1933,7 @@ namespace Assets_Editor
                             exportObjects.Effect.Add(appearance);
                             AddExportObjectCounter.Badge = int.Parse(AddExportObjectCounter.Badge.ToString() ?? "0") + 1;
                         }
-                        
+
                     }
                     else if (ObjectMenu.SelectedIndex == 3)
                     {
@@ -1852,7 +1943,7 @@ namespace Assets_Editor
                             exportObjects.Missile.Add(appearance);
                             AddExportObjectCounter.Badge = int.Parse(AddExportObjectCounter.Badge.ToString() ?? "0") + 1;
                         }
-                        
+
                     }
 
                     for (int i = 0; i < appearance.FrameGroup.Count; i++)
@@ -1871,19 +1962,40 @@ namespace Assets_Editor
 
         private void ExportObject_PreviewMouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
-            if(int.Parse(AddExportObjectCounter.Badge.ToString() ?? "0") == 0)
+            if (int.Parse(AddExportObjectCounter.Badge.ToString() ?? "0") == 0)
             {
                 StatusBar.MessageQueue.Enqueue($"Export list is empty.", null, null, null, false, true, TimeSpan.FromSeconds(2));
                 return;
-            }    
+            }
 
-            System.Windows.Forms.FolderBrowserDialog exportPath = new System.Windows.Forms.FolderBrowserDialog();
-            if (exportPath.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            Microsoft.Win32.SaveFileDialog saveFileDialog = new Microsoft.Win32.SaveFileDialog();
+            saveFileDialog.Filter = "AEC Files (*.aec)|*.aec|JSON Files (*.json)|*.json";
+            if (saveFileDialog.ShowDialog() == true)
             {
-                string fullPath = Path.Combine(exportPath.SelectedPath, "Appearances.aec");
-                var output = File.Create(fullPath);
-                exportObjects.WriteTo(output);
-                output.Close();
+                string fullPath = saveFileDialog.FileName;
+
+                if (fullPath.EndsWith(".aec"))
+                {
+                    var output = File.Create(fullPath);
+                    exportObjects.WriteTo(output);
+                    output.Close();
+                }
+                else if (fullPath.EndsWith(".json"))
+                {
+                    var output = File.Create(fullPath);
+                    var result = exportObjects.Object.Select(obj => new { obj.Id, obj.Name, obj.Description });
+                    var json = JsonConvert.SerializeObject(result, Formatting.Indented);
+                    var bytes = Encoding.UTF8.GetBytes(json);
+                    output.Write(bytes, 0, bytes.Length);
+                    output.Close();
+                }
+                else
+                {
+                    // Handle other file extensions or provide an error message
+                    StatusBar.MessageQueue.Enqueue($"Invalid file extension selected.", null, null, null, false, true, TimeSpan.FromSeconds(2));
+                    return;
+                }
+
                 AddExportObjectCounter.Badge = 0;
                 exportSprCounter = 0;
                 exportObjects = new Appearances();
